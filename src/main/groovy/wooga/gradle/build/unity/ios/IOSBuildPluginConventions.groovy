@@ -114,4 +114,8 @@ class IOSBuildPluginConventions {
             "IOS_BUILD_APP_IDENTIFIER",
             ["iosBuild.appIdentifier", "appIdentifier"],
             null)
+    static final PropertyLookup provisioningProfileAppId = new PropertyLookup(
+            "IOS_BUILD_PROVISIONING_PROFILE_APP_ID",
+            ["iosBuild.provisioningProfileAppId", "provisioningProfileAppId"],
+            null)
 }

@@ -139,6 +139,20 @@ trait IOSBuildPluginExtension extends BaseSpec {
         appIdentifier.set(value)
     }
 
+    private final Property<String> provisioningProfileAppId = objects.property(String)
+
+    Property<String> getProvisioningProfileAppId() {
+        provisioningProfileAppId
+    }
+
+    void setProvisioningProfileAppId(Provider<String> value) {
+        provisioningProfileAppId.set(value)
+    }
+
+    void setProvisioningProfileAppId(String value) {
+        provisioningProfileAppId.set(value)
+    }
+
     private final Property<String> teamId = objects.property(String)
 
     Property<String> getTeamId() {
