@@ -66,16 +66,20 @@ class IOSBuildPlugin implements Plugin<Project> {
                 .orElse(IOSBuildPluginConventions.teamId.getStringValueProvider(project)))
         extension.signingIdentities.convention(extension.exportOptions.map({ it.signingCertificate ? [it.signingCertificate] : null })
                 .orElse(IOSBuildPluginConventions.signingIdentities.getStringValueProvider(project).map({
-                    it.split(",").collect {it.trim()}.toList() }))
+                    it.split(",").collect { it.trim() }.toList()
+                }))
                 .orElse([]))
         extension.adhoc.convention(extension.exportOptions.map({
-            if(it.method != null) {
+            if (it.method != null) {
                 return it.method == 'ad-hoc'
             }
             null
         }).orElse(IOSBuildPluginConventions.adhoc.getBooleanValueProvider(project)))
         extension.appIdentifier.convention(extension.exportOptions.map({ it.distributionBundleIdentifier })
                 .orElse(IOSBuildPluginConventions.appIdentifier.getStringValueProvider(project)))
+
+        extension.provisioningProfileAppId.convention(IOSBuildPluginConventions.provisioningProfileAppId.getStringValueProvider(project).orElse(
+                extension.appIdentifier))
 
         extension.preferWorkspace.convention(IOSBuildPluginConventions.preferWorkspace.getBooleanValueProvider(project))
 
@@ -95,7 +99,8 @@ class IOSBuildPlugin implements Plugin<Project> {
 
         extension.cocoapods.executableName.convention(IOSBuildPluginConventions.cocoaPodsExecutableName.getStringValueProvider(project))
         extension.cocoapods.executableDirectory.convention(IOSBuildPluginConventions.cocoaPodsExecutableDirectory.getStringValueProvider(project).map({
-            project.layout.projectDirectory.dir(it)}))
+            project.layout.projectDirectory.dir(it)
+        }))
 
         extension.provisioningName.convention(IOSBuildPluginConventions.provisioningName.getStringValueProvider(project))
         extension.configuration.convention(IOSBuildPluginConventions.configuration.getStringValueProvider(project))
@@ -259,7 +264,7 @@ class IOSBuildPlugin implements Plugin<Project> {
             it.keychain(buildKeychain.flatMap({ it.keychain }).map({ it.asFile }))
         }
 
-        buildKeychain.configure({it.finalizedBy(removeKeychain, lockKeychain)})
+        buildKeychain.configure({ it.finalizedBy(removeKeychain, lockKeychain) })
 
         def shutdownHook = new Thread({
             System.err.println("shutdown hook called")
@@ -289,7 +294,25 @@ class IOSBuildPlugin implements Plugin<Project> {
         })
 
         def importProvisioningProfiles = tasks.register("importProvisioningProfiles", SighRenewBatch) {
-            it.profiles.set(extension.exportOptions.map({ it.getProvisioningProfiles() }))
+            it.profiles.set(extension.exportOptions.map({
+                def profiles = it.getProvisioningProfiles()
+                def appIdentifier = extension.appIdentifier.get()
+                def provisioningProfileAppId = extension.provisioningProfileAppId.get()
+                if (appIdentifier != provisioningProfileAppId) {
+                    if(provisioningProfileAppId.endsWith(".*")) {
+                        String wildCardPrefix = provisioningProfileAppId.substring(0, provisioningProfileAppId.length() -2)
+                        profiles = profiles.collectEntries { appId, name ->
+                            if (appId.startsWith(wildCardPrefix)) {
+                                return [provisioningProfileAppId, name]
+                            }
+                            [appId, name]
+                        }
+                    } else {
+                        logger.warn("property 'provisioningProfileAppId' has a different value than 'appIdentifier' but is not a wildcard Id. Potential miss-configuration")
+                    }
+                }
+                profiles
+            }))
             it.dependsOn addKeychain, buildKeychain, unlockKeychain
             it.finalizedBy removeKeychain, lockKeychain
         }
@@ -315,7 +338,7 @@ class IOSBuildPlugin implements Plugin<Project> {
             it.description = "Upload binary to TestFlightApp"
         }
 
-        tasks.named(PUBLISH_LIFECYCLE_TASK_NAME, {task ->
+        tasks.named(PUBLISH_LIFECYCLE_TASK_NAME, { task ->
             if (extension.publishToTestFlight.present && extension.publishToTestFlight.get()) {
                 task.dependsOn(publishTestFlight)
             }

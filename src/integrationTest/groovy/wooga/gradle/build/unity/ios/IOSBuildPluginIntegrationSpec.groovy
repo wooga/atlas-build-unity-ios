@@ -17,7 +17,7 @@
 
 package wooga.gradle.build.unity.ios
 
-import com.wooga.gradle.PlatformUtils
+
 import com.wooga.gradle.test.ConventionSource
 import com.wooga.gradle.test.PropertyLocation
 import com.wooga.gradle.test.PropertyQueryTaskWriter
@@ -228,6 +228,11 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
             project.importProvisioningProfiles.onlyIf({${!success}})
         """.stripIndent()
 
+        and: "we need to setup at least an appIdentifier"
+        buildFile << """\
+            ${extensionName}.appIdentifier = "com.foo.bar.app"
+        """.stripIndent()
+
         setupTestKeychainProperties()
 
         when:
@@ -413,6 +418,16 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
         "appIdentifier"                     | setter                             | "com.test.app.7"                                                                           | "String"                 | PropertyLocation.script
         "appIdentifier"                     | setter                             | "com.test.app.8"                                                                           | "Provider<String>"       | PropertyLocation.script
         "appIdentifier"                     | _                                  | null                                                                                       | _                        | PropertyLocation.none
+
+        "provisioningProfileAppId"          | _                                  | "com.test.app.1.*"                                                                         | _                        | PropertyLocation.environment
+        "provisioningProfileAppId"          | _                                  | "com.test.app.2.*"                                                                         | _                        | PropertyLocation.property
+        "provisioningProfileAppId"          | assignment                         | "com.test.app.3.*"                                                                         | "String"                 | PropertyLocation.script
+        "provisioningProfileAppId"          | assignment                         | "com.test.app.4.*"                                                                         | "Provider<String>"       | PropertyLocation.script
+        "provisioningProfileAppId"          | providerSet                        | "com.test.app.5.*"                                                                         | "String"                 | PropertyLocation.script
+        "provisioningProfileAppId"          | providerSet                        | "com.test.app.6.*"                                                                         | "Provider<String>"       | PropertyLocation.script
+        "provisioningProfileAppId"          | setter                             | "com.test.app.7.*"                                                                         | "String"                 | PropertyLocation.script
+        "provisioningProfileAppId"          | setter                             | "com.test.app.8.*"                                                                         | "Provider<String>"       | PropertyLocation.script
+        "provisioningProfileAppId"          | _                                  | null                                                                                       | _                        | PropertyLocation.none
 
         "teamId"                            | _                                  | "team1"                                                                                    | _                        | PropertyLocation.environment
         "teamId"                            | _                                  | "team2"                                                                                    | _                        | PropertyLocation.property
@@ -658,6 +673,42 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
 
         value = (type != _) ? wrapValueBasedOnType(rawValue, type.toString(), wrapValueFallback) : rawValue
         testValue = (expectedValue == _) ? rawValue : expectedValue
+    }
+
+    def "task importProvisioningProfiles will fetch wildcard profile when set"() {
+        given: "a exportOptions object"
+        def options = new ExportOptions()
+        and: "the initial value set"
+        options.provisioningProfiles = profiles
+        options.distributionBundleIdentifier = "net.foo.app.AwesomeApp"
+
+        and: "a exportOptions.plist file"
+        def exportOptionsPlist = createFile("exportOptions.plist")
+        exportOptionsPlist << options.toXMLPropertyList()
+
+        and: "provisioningProfileAppId when available"
+        if (provisioningProfileAppId) {
+            buildFile << """
+            ${extensionName}.provisioningProfileAppId = ${wrapValueBasedOnType(provisioningProfileAppId, "String")}
+            """.stripIndent()
+        }
+
+        when:
+        def query = new PropertyQueryTaskWriter("importProvisioningProfiles.profiles")
+        query.write(buildFile)
+
+        def result = runTasksSuccessfully(query.taskName)
+
+        then:
+        expectedProfiles.each { appId, name ->
+            query.matches(result, appId + ":" + name)
+        }
+
+        where:
+        profiles                                                                                                | provisioningProfileAppId | expectedProfiles
+        ["net.foo.app.App": "Profile", "net.foo.app.Extension": "Profile", "net.bar.app.Extension": "Profile2"] | null                     | profiles
+        ["net.foo.app.App": "Profile", "net.foo.app.Extension": "Profile", "net.bar.app.Extension": "Profile2"] | "net.foo.app.*"          | ["net.foo.app.*": "Profile", "net.bar.app.Extension": "Profile2"]
+        ["net.foo.app.App": "Profile", "net.foo.app.Extension": "Profile", "net.bar.app.Extension": "Profile2"] | "net.foo.app"            | profiles
     }
 
     def "export options configuration actions are transactional"() {
