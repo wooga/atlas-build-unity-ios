@@ -27,6 +27,7 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Input
@@ -264,6 +265,21 @@ trait IOSBuildPluginExtension extends BaseSpec {
             }
             options
         })
+    }
+
+    private final MapProperty<String, String> provisioningProfiles = objects.mapProperty(String, String)
+
+    @Input
+    MapProperty<String, String> getProvisioningProfiles() {
+        provisioningProfiles
+    }
+
+    void setProvisioningProfiles(Map<String, String> value) {
+        provisioningProfiles.set(value)
+    }
+
+    void setProvisioningProfiles(Provider<Map<String, String>> value) {
+        provisioningProfiles.set(value)
     }
 
     private final List<Action<ExportOptions>> exportOptionsActions = []

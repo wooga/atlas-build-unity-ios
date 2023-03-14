@@ -31,6 +31,7 @@ import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskProvider
 import wooga.gradle.build.unity.ios.internal.DefaultIOSBuildPluginExtension
 import wooga.gradle.build.unity.ios.tasks.ImportCodeSigningIdentities
+import wooga.gradle.build.unity.ios.tasks.InstallProvisionProfiles
 import wooga.gradle.build.unity.ios.tasks.PodInstallTask
 import wooga.gradle.fastlane.FastlanePlugin
 import wooga.gradle.fastlane.FastlanePluginExtension
@@ -110,6 +111,25 @@ class IOSBuildPlugin implements Plugin<Project> {
         extension.keychainPassword.convention(IOSBuildPluginConventions.keychainPassword.getStringValueProvider(project))
         extension.publishToTestFlight.convention(IOSBuildPluginConventions.publishToTestFlight.getBooleanValueProvider(project))
         extension.scheme.convention(IOSBuildPluginConventions.scheme.getStringValueProvider(project))
+        extension.provisioningProfiles.convention(extension.exportOptions.map({
+            def profiles = it.getProvisioningProfiles()
+            def appIdentifier = extension.appIdentifier.getOrElse("")
+            def provisioningProfileAppId = extension.provisioningProfileAppId.getOrElse("")
+            if (appIdentifier != provisioningProfileAppId) {
+                if(provisioningProfileAppId.endsWith(".*")) {
+                    String wildCardPrefix = provisioningProfileAppId.substring(0, provisioningProfileAppId.length() -2)
+                    profiles = profiles.collectEntries { appId, name ->
+                        if (appId.startsWith(wildCardPrefix)) {
+                            return [provisioningProfileAppId, name]
+                        }
+                        [appId, name]
+                    }
+                } else {
+                    LOG.warn("property 'provisioningProfileAppId' has a different value than 'appIdentifier' but is not a wildcard Id. Potential miss-configuration")
+                }
+            }
+            profiles
+        }).orElse([:]))
 
         //register some defaults
         project.tasks.withType(XcodeArchive.class, new Action<XcodeArchive>() {
@@ -169,6 +189,8 @@ class IOSBuildPlugin implements Plugin<Project> {
                     fastlaneExtension.password.getOrNull()
                 }))
 
+                task.readOnly.convention(true)
+                task.skipInstall.convention(true)
                 task.teamId.convention(extension.getTeamId())
                 task.appIdentifier.convention(extension.getAppIdentifier())
                 task.destinationDir.convention(project.layout.dir(project.provider({ task.getTemporaryDir() })))
@@ -204,6 +226,17 @@ class IOSBuildPlugin implements Plugin<Project> {
             @Override
             void execute(ImportCodeSigningIdentities task) {
                 task.applicationAccessPaths.convention(["/usr/bin/codesign"])
+            }
+        })
+
+        project.tasks.withType(InstallProvisionProfiles.class, new Action<InstallProvisionProfiles>() {
+            @Override
+            void execute(InstallProvisionProfiles task) {
+                task.logFile.convention(project.layout.buildDirectory.file("logs/${task.name}.log"))
+                task.logToStdout.convention(project.provider {project.logger.isInfoEnabled()})
+                task.outputDirectory.convention(project.layout.dir(project.provider {
+                    new File("${System.getProperty("user.home")}/Library/MobileDevice/Provisioning\\ Profiles/")
+                }))
             }
         })
 
@@ -294,27 +327,13 @@ class IOSBuildPlugin implements Plugin<Project> {
         })
 
         def importProvisioningProfiles = tasks.register("importProvisioningProfiles", SighRenewBatch) {
-            it.profiles.set(extension.exportOptions.map({
-                def profiles = it.getProvisioningProfiles()
-                def appIdentifier = extension.appIdentifier.get()
-                def provisioningProfileAppId = extension.provisioningProfileAppId.get()
-                if (appIdentifier != provisioningProfileAppId) {
-                    if(provisioningProfileAppId.endsWith(".*")) {
-                        String wildCardPrefix = provisioningProfileAppId.substring(0, provisioningProfileAppId.length() -2)
-                        profiles = profiles.collectEntries { appId, name ->
-                            if (appId.startsWith(wildCardPrefix)) {
-                                return [provisioningProfileAppId, name]
-                            }
-                            [appId, name]
-                        }
-                    } else {
-                        logger.warn("property 'provisioningProfileAppId' has a different value than 'appIdentifier' but is not a wildcard Id. Potential miss-configuration")
-                    }
-                }
-                profiles
-            }))
+            it.profiles.set(extension.provisioningProfiles)
             it.dependsOn addKeychain, buildKeychain, unlockKeychain
             it.finalizedBy removeKeychain, lockKeychain
+        }
+
+        def installProvisioningProfiles = tasks.register("installProvisioningProfiles", InstallProvisionProfiles) {
+            it.provisioningProfiles.from(importProvisioningProfiles.get().getOutputs())
         }
 
         TaskProvider<PodInstallTask> podInstall = tasks.register("podInstall", PodInstallTask) {
@@ -324,7 +343,7 @@ class IOSBuildPlugin implements Plugin<Project> {
         }
 
         def xcodeArchive = tasks.register("xcodeArchive", XcodeArchive) {
-            it.dependsOn addKeychain, unlockKeychain, importProvisioningProfiles, podInstall, buildKeychain
+            it.dependsOn addKeychain, unlockKeychain, installProvisioningProfiles, podInstall, buildKeychain
             it.projectPath.set(extension.projectPath)
             it.buildKeychain.set(buildKeychain.flatMap({ it.keychain }))
         }

@@ -12,21 +12,15 @@ import static com.wooga.gradle.test.PropertyUtils.toProviderSet
 import static com.wooga.gradle.test.PropertyUtils.toSetter
 
 @Requires({ os.macOs })
-class ImportCodeSigningIdentitiesIntegrationSpec extends IOSBuildIntegrationSpec {
-
-    String subjectUnderTestName = "importSigningIdentity"
-    String subjectUnderTestTypeName = ImportCodeSigningIdentities.class.name
+class ImportCodeSigningIdentitiesIntegrationSpec extends IOSBuildTaskIntegrationSpec<ImportCodeSigningIdentities> {
 
     @Keychain(unlockKeychain = true)
     MacOsKeychain buildKeychain
 
     def setup() {
-        buildFile << """
-        task ${subjectUnderTestName}(type: ${subjectUnderTestTypeName}) {
-            //inputKeychain = file('${buildKeychain.location}') 
+        appendToSubjectTask("""
             keychain = file('${buildKeychain.location}')
-        }
-        """.stripIndent()
+        """.stripIndent())
     }
 
     @Unroll("import #taskStatus when #reason")

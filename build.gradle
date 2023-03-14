@@ -51,7 +51,8 @@ cveHandler {
 dependencies {
     api 'net.wooga.gradle:macos-security:[1.0.1,2['
     api 'net.wooga.gradle:xcodebuild:[1,2['
-    api 'net.wooga.gradle:fastlane:[1.0.1,2['
+    api 'net.wooga.gradle:fastlane:[1.2,2['
+    implementation "com.googlecode.plist:dd-plist:1.23"
     integrationTestImplementation'com.wooga.spock.extensions:spock-macos-keychain-extension:[1,2['
     implementation 'com.wooga.gradle:gradle-commons:[1,2['
     testImplementation 'com.wooga.gradle:gradle-commons-test:[1,2['
