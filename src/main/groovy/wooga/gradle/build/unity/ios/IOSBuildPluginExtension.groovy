@@ -383,7 +383,7 @@ trait IOSBuildPluginExtension extends BaseSpec {
         it.dir(xcodeProjectFileName)
     })
 
-    private static class CocoaPods implements ExecSpec {}
+    protected static class CocoaPods implements ExecSpec {}
 
     ExecSpec cocoapods = objects.newInstance(CocoaPods)
 
