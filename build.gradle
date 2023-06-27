@@ -15,7 +15,7 @@
  */
 
 plugins {
-    id 'net.wooga.plugins' version '4.0.0'
+    id 'net.wooga.plugins' version '5.0.0-rc.2'
     id 'net.wooga.snyk' version '0.12.0'
     id 'net.wooga.snyk-gradle-plugin' version '0.6.0'
     id "net.wooga.cve-dependency-resolution" version "0.4.0"
@@ -49,9 +49,9 @@ cveHandler {
 }
 
 dependencies {
-    api 'net.wooga.gradle:macos-security:[1.0.1,2['
-    api 'net.wooga.gradle:xcodebuild:[1,2['
-    api 'net.wooga.gradle:fastlane:[1.2,2['
+    api 'net.wooga.gradle:macos-security:[2,3['
+    api 'net.wooga.gradle:xcodebuild:[2,3['
+    api 'net.wooga.gradle:fastlane:[2,3['
     implementation "com.googlecode.plist:dd-plist:1.23"
     integrationTestImplementation'com.wooga.spock.extensions:spock-macos-keychain-extension:[1,2['
     implementation 'com.wooga.gradle:gradle-commons:[1,2['

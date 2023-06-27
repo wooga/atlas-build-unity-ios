@@ -164,7 +164,7 @@ class ImportCodeSigningIdentitiesIntegrationSpec extends IOSBuildTaskIntegration
         value = wrapValueBasedOnType(rawValue, type, wrapValueFallback)
     }
 
-    def "is up-to-date when #reason"() {
+    def "is up-to-date when #signingIdentity"() {
         given: "an invalid sighing certificate"
         def passphrase = "123456"
         def cert = SecurityHelper.createTestCodeSigningCertificatePkcs12([commonName: signingIdentity], passphrase).pkcs12

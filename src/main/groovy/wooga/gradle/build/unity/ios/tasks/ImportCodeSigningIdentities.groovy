@@ -177,7 +177,9 @@ class ImportCodeSigningIdentities extends DefaultTask implements SecurityKeychai
         }))
 
         keychain.convention(destinationDir.file(fileName))
-        inputKeychain.convention(keychain)
+        //From gradle 7 when outputs are chained with inputs, it creates a dependency between the tasks.
+        // In this case this creates a dependency of this task with itself. Wrapping it around a provider hacks our way out of this.
+        inputKeychain.convention(project.provider{ keychain.orNull })
     }
 
     Boolean hasSigningIdentity(String identity, Boolean validIdentities = true) {
