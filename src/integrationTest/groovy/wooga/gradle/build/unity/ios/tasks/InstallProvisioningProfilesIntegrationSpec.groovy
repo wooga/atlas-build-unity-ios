@@ -57,7 +57,7 @@ class InstallProvisioningProfilesIntegrationSpec extends IOSBuildTaskIntegration
             def mock = MobileProvisionMock.createMock({
                 it.uuid = id
             })
-            def installedProfile = new File(projectDir, "build/profiles/${id}.mobileprovision")
+            def installedProfile = new File(projectDir, "${installDir}/${id}.mobileprovision")
             new Tuple2<File, File>(mock, installedProfile)
         }
 
@@ -67,7 +67,7 @@ class InstallProvisioningProfilesIntegrationSpec extends IOSBuildTaskIntegration
         and:
         appendToSubjectTask("""
             provisioningProfiles.from(${wrapValueBasedOnType(files.collect { it.first }, "List<File>")})
-            outputDirectory = ${wrapValueBasedOnType(new File(projectDir, "build/profiles"), "File")}
+            outputDirectory = ${wrapValueBasedOnType(new File(projectDir, installDir), "File")}
         """.stripIndent())
 
         when:
@@ -82,6 +82,7 @@ class InstallProvisioningProfilesIntegrationSpec extends IOSBuildTaskIntegration
         }
 
         where:
+        installDir = "build/custom profiles/location"
         uuids = [UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()]
     }
 
