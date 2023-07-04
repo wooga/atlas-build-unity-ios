@@ -235,7 +235,7 @@ class IOSBuildPlugin implements Plugin<Project> {
                 task.logFile.convention(project.layout.buildDirectory.file("logs/${task.name}.log"))
                 task.logToStdout.convention(project.provider {project.logger.isInfoEnabled()})
                 task.outputDirectory.convention(project.layout.dir(project.provider {
-                    new File("${System.getProperty("user.home")}/Library/MobileDevice/Provisioning\\ Profiles/")
+                    new File("${System.getProperty("user.home")}/Library/MobileDevice/Provisioning Profiles/")
                 }))
             }
         })
