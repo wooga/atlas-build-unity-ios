@@ -23,6 +23,7 @@ import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
 import org.gradle.api.plugins.BasePlugin
@@ -367,6 +368,10 @@ class IOSBuildPlugin implements Plugin<Project> {
         lockKeychain.configure({ it.mustRunAfter([xcodeArchive, xcodeExport]) })
 
         def collectOutputs = tasks.register("collectOutputs", Sync) {
+            // This is needed due to a bug on gradle 7 that sometimes does not recognize the default build strategy. Exclude is the default one.
+            // It happens when the same file is inserted in the copy command multiple times.
+            // See: https://github.com/gradle/gradle/issues/17236
+            it.duplicatesStrategy = DuplicatesStrategy.EXCLUDE
             it.from(xcodeExport, archiveDSYM)
             into(project.file("${project.buildDir}/outputs"))
         }
