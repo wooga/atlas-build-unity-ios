@@ -17,10 +17,11 @@
 
 package wooga.gradle.build.unity.ios
 
-
+import com.wooga.gradle.PlatformUtils
 import com.wooga.gradle.test.ConventionSource
 import com.wooga.gradle.test.PropertyLocation
 import com.wooga.gradle.test.PropertyQueryTaskWriter
+import com.wooga.gradle.test.queries.PropertyQuery
 import com.wooga.gradle.test.queries.TestValue
 import com.wooga.gradle.test.writers.PropertyGetterTaskWriter
 import com.wooga.gradle.test.writers.PropertySetterWriter
@@ -28,6 +29,7 @@ import com.wooga.security.Domain
 import com.wooga.security.MacOsKeychainSearchList
 import nebula.test.functional.ExecutionResult
 import net.wooga.system.ProcessList
+import spock.lang.IgnoreIf
 import spock.lang.Requires
 import spock.lang.Shared
 import spock.lang.Timeout
@@ -585,10 +587,10 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
 
 
         set = new PropertySetterWriter(extensionName, property)
-                .serialize(wrapValueFallback)
-                .set(rawValue, type)
-                .to(location)
-                .use(invocation)
+            .serialize(wrapValueFallback)
+            .set(rawValue, type)
+            .to(location)
+            .use(invocation)
 
         get = new PropertyGetterTaskWriter(set)
     }
@@ -752,5 +754,27 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
 
         then:
         query.matches(result, "a prefixed initial value with a value appended")
+    }
+
+    /**
+     * With cocoapods now meant to be installed by default
+     */
+    def "installs cocoapods"() {
+
+        when:
+        def result = runTasks(taskName)
+
+        then: " should be installed"
+        println result.standardError
+        stubs.each {
+            def binary = new File(projectDir, "${stubsDir}/${it}")
+            assert binary.exists()
+            assert binary.canExecute()
+        }
+
+        where:
+        stubs = ["pod"]
+        stubsDir = "bin"
+        taskName = "podInstall"
     }
 }
