@@ -30,6 +30,10 @@ import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.publish.plugins.PublishingPlugin
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskProvider
+import wooga.gradle.asdf.AsdfPlugin
+import wooga.gradle.asdf.AsdfPluginExtension
+import wooga.gradle.asdf.ruby.RubyPlugin
+import wooga.gradle.asdf.ruby.RubyPluginExtension
 import wooga.gradle.build.unity.ios.internal.DefaultIOSBuildPluginExtension
 import wooga.gradle.build.unity.ios.tasks.ImportCodeSigningIdentities
 import wooga.gradle.build.unity.ios.tasks.InstallProvisionProfiles
@@ -57,6 +61,8 @@ class IOSBuildPlugin implements Plugin<Project> {
         project.pluginManager.apply(XcodeBuildPlugin.class)
         project.pluginManager.apply(FastlanePlugin.class)
         project.pluginManager.apply(PublishingPlugin.class)
+
+        applyAsdfPlugin(project)
 
         def extension = project.getExtensions().create(IOSBuildPluginExtension, EXTENSION_NAME, DefaultIOSBuildPluginExtension.class)
         def fastlaneExtension = project.getExtensions().getByType(FastlanePluginExtension)
@@ -387,5 +393,25 @@ class IOSBuildPlugin implements Plugin<Project> {
 
         archiveDSYM.configure({ it.mustRunAfter(xcodeExport) })
         tasks.named(BasePlugin.ASSEMBLE_TASK_NAME).configure({ it.dependsOn(xcodeExport, archiveDSYM, collectOutputs) })
+    }
+
+    /***
+     * Applies the asdf plugin, which manages the installation and usage of the asdf tool which manages
+     * multiple language runtime versions on a per-project basis.
+     * (https://github.com/asdf-vm/asdf)
+     * @param project
+     */
+    void applyAsdfPlugin(Project project) {
+
+        project.pluginManager.apply(AsdfPlugin.class)
+        project.pluginManager.apply(RubyPlugin.class)
+
+        def asdf = project.extensions.getByType(AsdfPluginExtension)
+        asdf.version.convention(IOSBuildPluginConventions.asdfVersion.getStringValueProvider(project))
+
+        def ruby = project.extensions.getByType(RubyPluginExtension)
+        ruby.gem("cocoapods")
+        ruby.gem("cocoapods-art")
+        ruby.gem("cocoapods-pod-linkage")
     }
 }
