@@ -413,5 +413,12 @@ class IOSBuildPlugin implements Plugin<Project> {
         ruby.gem("cocoapods")
         ruby.gem("cocoapods-art")
         ruby.gem("cocoapods-pod-linkage")
+
+        def asdfBinstubsTask = project.tasks.named(AsdfPlugin.BIN_STUBS_TASK_NAME)
+
+        project.tasks.withType(PodInstallTask).configureEach {
+            it.dependsOn(asdfBinstubsTask)
+            it.executableDirectory.set(asdf.stubsDir)
+        }
     }
 }
