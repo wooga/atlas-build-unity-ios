@@ -29,6 +29,7 @@ import com.wooga.security.Domain
 import com.wooga.security.MacOsKeychainSearchList
 import nebula.test.functional.ExecutionResult
 import net.wooga.system.ProcessList
+import org.gradle.process.ExecSpec
 import spock.lang.IgnoreIf
 import spock.lang.Requires
 import spock.lang.Shared
@@ -40,6 +41,8 @@ import wooga.gradle.macOS.security.tasks.SecurityCreateKeychain
 import wooga.gradle.xcodebuild.config.ExportOptions
 import wooga.gradle.xcodebuild.tasks.ExportArchive
 import wooga.gradle.xcodebuild.tasks.XcodeArchive
+
+import java.nio.file.Paths
 
 import static com.wooga.gradle.PlatformUtils.escapedPath
 import static com.wooga.gradle.test.queries.TestValue.projectFile
@@ -759,18 +762,22 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
     /**
      * With cocoapods now meant to be installed by default
      */
-    def "installs cocoapods"() {
-
+    def "installs cocoapods with repo-art command"() {
         when:
         def result = runTasks(taskName)
 
-        then: " should be installed"
+        then: "pod should be installed in bin directory"
         println result.standardError
         stubs.each {
             def binary = new File(projectDir, "${stubsDir}/${it}")
             assert binary.exists()
             assert binary.canExecute()
         }
+
+        and: "'pod' executable should have 'repo-art' subcommand"
+        def podsExec = Paths.get(projectDir.absolutePath, stubsDir, "pod").toFile()
+        def podResult = "$podsExec.absolutePath repo-art".execute()
+        podResult.waitFor() == 0
 
         where:
         stubs = ["pod"]

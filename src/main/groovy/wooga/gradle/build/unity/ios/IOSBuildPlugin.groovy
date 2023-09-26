@@ -408,17 +408,20 @@ class IOSBuildPlugin implements Plugin<Project> {
 
         def asdf = project.extensions.getByType(AsdfPluginExtension)
         asdf.version.convention(IOSBuildPluginConventions.asdfVersion.getStringValueProvider(project))
+        asdf.tool("ruby")
 
         def ruby = project.extensions.getByType(RubyPluginExtension)
         ruby.gem("cocoapods")
         ruby.gem("cocoapods-art")
         ruby.gem("cocoapods-pod-linkage")
 
-        def asdfBinstubsTask = project.tasks.named(AsdfPlugin.BIN_STUBS_TASK_NAME)
+        def asdfGemInstallTask = project.tasks.named(RubyPlugin.RUBY_GEMS_TAK) {
+            dependsOn(AsdfPlugin.BIN_STUBS_TASK_NAME)
+        }
 
         project.tasks.withType(PodInstallTask).configureEach {
-            it.dependsOn(asdfBinstubsTask)
-            it.executableDirectory.set(asdf.stubsDir)
+            it.dependsOn(asdfGemInstallTask)
+            it.executableDirectory.set(ruby.stubsDir)
         }
     }
 }
