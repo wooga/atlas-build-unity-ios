@@ -784,4 +784,29 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
         stubsDir = "bin"
         taskName = "podInstall"
     }
+
+    def "Injects binstup into podInstall execution PATH"() {
+        given: "a fake pod script"
+        def podScript = File.createTempFile("pod", "fake.sh")
+        podScript.text = """\
+        echo "repo-art: \$(which pod-repo-art)"
+        """.stripIndent()
+        podScript.executable = true
+
+        buildFile << """
+        project.tasks.withType(PodInstallTask).configureEach {
+            it.executable.set(${wrapValueBasedOnType(podScript, File)})
+        }
+        """.stripIndent()
+
+        when:
+        def result = runTasks(taskName)
+
+        then:
+        result.success
+        outputContains(result, "repo-art: ${new File(projectDir, "stubs/pod-repo-art").absolutePath}")
+
+        where:
+        taskName = "podInstall"
+    }
 }
