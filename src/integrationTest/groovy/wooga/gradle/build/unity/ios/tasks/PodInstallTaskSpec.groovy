@@ -113,22 +113,73 @@ class PodInstallTaskSpec extends CocoaPodSpec<PodInstallTask> {
         query.matches(result, expectedValue)
 
         where:
-        property                 | method                  | rawValue           | returnValue | type
-        "projectDirectory"       | toProviderSet(property) | "/path/to/project" | _           | "File"
-        "projectDirectory"       | toProviderSet(property) | "/path/to/project" | _           | "Provider<Directory>"
-        "projectDirectory"       | toSetter(property)      | "/path/to/project" | _           | "File"
-        "projectDirectory"       | toSetter(property)      | "/path/to/project" | _           | "Provider<Directory>"
+        property                 | method                  | rawValue            | returnValue | type
+        "projectDirectory"       | toProviderSet(property) | "/path/to/project"  | _           | "File"
+        "projectDirectory"       | toProviderSet(property) | "/path/to/project"  | _           | "Provider<Directory>"
+        "projectDirectory"       | toSetter(property)      | "/path/to/project"  | _           | "File"
+        "projectDirectory"       | toSetter(property)      | "/path/to/project"  | _           | "Provider<Directory>"
 
-        "xcodeProjectFileName"   | toProviderSet(property) | "test.xcodeproj"   | _           | "String"
-        "xcodeProjectFileName"   | toProviderSet(property) | "test.xcodeproj"   | _           | "Provider<String>"
-        "xcodeProjectFileName"   | toSetter(property)      | "test.xcodeproj"   | _           | "String"
-        "xcodeProjectFileName"   | toSetter(property)      | "test.xcodeproj"   | _           | "Provider<String>"
+        "xcodeProjectFileName"   | toProviderSet(property) | "test.xcodeproj"    | _           | "String"
+        "xcodeProjectFileName"   | toProviderSet(property) | "test.xcodeproj"    | _           | "Provider<String>"
+        "xcodeProjectFileName"   | toSetter(property)      | "test.xcodeproj"    | _           | "String"
+        "xcodeProjectFileName"   | toSetter(property)      | "test.xcodeproj"    | _           | "Provider<String>"
 
-        "xcodeWorkspaceFileName" | toProviderSet(property) | "test.xcworkspace" | _           | "String"
-        "xcodeWorkspaceFileName" | toProviderSet(property) | "test.xcworkspace" | _           | "Provider<String>"
-        "xcodeWorkspaceFileName" | toSetter(property)      | "test.xcworkspace" | _           | "String"
-        "xcodeWorkspaceFileName" | toSetter(property)      | "test.xcworkspace" | _           | "Provider<String>"
+        "xcodeWorkspaceFileName" | toProviderSet(property) | "test.xcworkspace"  | _           | "String"
+        "xcodeWorkspaceFileName" | toProviderSet(property) | "test.xcworkspace"  | _           | "Provider<String>"
+        "xcodeWorkspaceFileName" | toSetter(property)      | "test.xcworkspace"  | _           | "String"
+        "xcodeWorkspaceFileName" | toSetter(property)      | "test.xcworkspace"  | _           | "Provider<String>"
+
+        "artRepositories"        | toProviderSet(property) | ["https://foo.bar"] | _           | "List<String>"
+        "artRepositories"        | toProviderSet(property) | ["https://foo.bar"] | _           | "Provider<List<String>>"
+        "artRepositories"        | toSetter(property)      | ["https://foo.bar"] | _           | "List<String>"
+        "artRepositories"        | toSetter(property)      | ["https://foo.bar"] | _           | "Provider<List<String>>"
         value = wrapValueBasedOnType(rawValue, type, wrapValueFallback)
         expectedValue = returnValue == _ ? rawValue : returnValue
+    }
+
+    def "adds repo-art repositories when configured"() {
+        given: "a sample Pod file"
+        def podFile = createFile("Podfile")
+
+        and: "a list of artifactory repositories configured"
+        appendToSubjectTask("""
+            setArtRepositories(${wrapValueBasedOnType(repositories.values().toList(), "List<String>")})
+        """.stripIndent())
+
+        when:
+        def result = runTasks(taskName)
+
+        then:
+        result.success
+        repositories.each {repoName, repoUrl ->
+            assert outputContains(result, "repo-art add ${repoName} ${repoUrl} --silent")
+            assert outputContains(result, "repo-art update ${repoName}")
+        }
+
+        where:
+        repositories = [
+                "repo1-443-foo-bar": "https://repo1/foo/bar",
+                "repo2-443-"       : "https://repo2/",
+                "repo3"            : "https://repo3"
+        ]
+        taskName = subjectUnderTestName
+    }
+
+    def "does not call repo-art commands when artRepositories properties is empty"() {
+        given: "a sample Pod file"
+        def podFile = createFile("Podfile")
+
+        and: "empty artRepositories"
+        appendToSubjectTask("""
+            setArtRepositories([])
+        """.stripIndent())
+
+        when:
+        def result = runTasks(subjectUnderTestName)
+
+        then:
+        result.success
+        !outputContains(result, "repo-art add")
+        !outputContains(result, "repo-art update")
     }
 }
