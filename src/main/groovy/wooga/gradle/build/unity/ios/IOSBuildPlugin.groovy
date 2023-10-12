@@ -411,12 +411,15 @@ class IOSBuildPlugin implements Plugin<Project> {
         asdf.tool("ruby")
 
         def ruby = project.extensions.getByType(RubyPluginExtension)
+        ruby.enableGemfileGeneration()
+        // TODO: Remove once cocoapods is patched past 1.13.0
+        ruby.gem("activesupport", "7.0.8")
         ruby.gem("cocoapods")
         ruby.gem("cocoapods-art")
         ruby.gem("cocoapods-pod-linkage")
 
-        def asdfGemInstallTask = project.tasks.named(RubyPlugin.RUBY_GEMS_TAK) {
-            dependsOn(AsdfPlugin.BIN_STUBS_TASK_NAME)
+         def asdfGemInstallTask = project.tasks.named(RubyPlugin.RUBY_GEMFILE_TASK) {
+            dependsOn(RubyPlugin.BUNDLE_BIN_STUBS_TASK)
         }
 
         project.tasks.withType(PodInstallTask).configureEach {
