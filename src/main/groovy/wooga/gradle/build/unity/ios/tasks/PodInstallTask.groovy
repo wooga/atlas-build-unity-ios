@@ -8,6 +8,8 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.file.Directory
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileCollection
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.*
@@ -26,6 +28,17 @@ class PodInstallTask extends DefaultTask implements ExecSpec, LogFileSpec, Proce
 
     void setProjectDirectory(File value) {
         projectDirectory.set(value)
+    }
+
+    private final ListProperty<String> artRepositories = project.objects.listProperty(String)
+
+    @Input
+    ListProperty<String> getArtRepositories() {
+        artRepositories
+    }
+
+    void setArtRepositories(Provider<Iterable<String>> value) {
+        artRepositories.set(value)
     }
 
     @InputFiles
@@ -93,6 +106,22 @@ class PodInstallTask extends DefaultTask implements ExecSpec, LogFileSpec, Proce
 
     @TaskAction
     protected void install() {
+        artRepositories.get().each { repoUrl ->
+            def repoName = repoUrl.replaceAll("https?://","").replaceFirst("/","-443-").replaceAll("[/]","-")
+            ProcessExecutor.from(this)
+
+                    .withArguments(['repo-art', 'add', repoName, repoUrl, "--silent"])
+                    .withOutputLogFile(this, this)
+                    .execute()
+                    .assertNormalExitValue()
+
+            ProcessExecutor.from(this)
+                    .withArguments(['repo-art', 'update', repoName])
+                    .withOutputLogFile(this, this)
+                    .execute()
+                    .assertNormalExitValue()
+        }
+
         ProcessExecutor.from(this)
                 .withArguments(['repo', 'update'])
                 .withOutputLogFile(this, this)
