@@ -17,11 +17,10 @@
 
 package wooga.gradle.build.unity.ios
 
-import com.wooga.gradle.PlatformUtils
+
 import com.wooga.gradle.test.ConventionSource
 import com.wooga.gradle.test.PropertyLocation
 import com.wooga.gradle.test.PropertyQueryTaskWriter
-import com.wooga.gradle.test.queries.PropertyQuery
 import com.wooga.gradle.test.queries.TestValue
 import com.wooga.gradle.test.writers.PropertyGetterTaskWriter
 import com.wooga.gradle.test.writers.PropertySetterWriter
@@ -29,8 +28,6 @@ import com.wooga.security.Domain
 import com.wooga.security.MacOsKeychainSearchList
 import nebula.test.functional.ExecutionResult
 import net.wooga.system.ProcessList
-import org.gradle.process.ExecSpec
-import spock.lang.IgnoreIf
 import spock.lang.Requires
 import spock.lang.Shared
 import spock.lang.Timeout
@@ -776,12 +773,21 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
 
         and: "'pod' executable should have 'repo-art' subcommand"
         def podsExec = Paths.get(projectDir.absolutePath, stubsDir, "pod").toFile()
-        def podResult = "$podsExec.absolutePath repo-art".execute()
-        podResult.waitFor() == 0
+        def command  = "$podsExec.absolutePath"
+        assertProcess(command, "repo-art")
 
         where:
         stubs = ["pod"]
         stubsDir = "bin"
         taskName = "podInstall"
+    }
+
+    //workingDir == projectDir is necessary for asdf to locate the correct .tool-versions file
+    void assertProcess(File workingDir = projectDir, String... command) {
+        def process = new ProcessBuilder(command).directory(workingDir).start()
+        def exitValue = process.waitFor()
+
+        def errorString = process.err.text
+        assert exitValue == 0, "Failed executing process ${command}: ${errorString}"
     }
 }
