@@ -56,7 +56,7 @@ dependencies {
     implementation "com.googlecode.plist:dd-plist:1.23"
     implementation 'com.wooga.gradle:gradle-commons:[1,2['
     //implementation 'net.wooga.gradle:asdf:[1,2['
-    implementation 'net.wooga.gradle:asdf:1.1.0-rc.2'
+    implementation 'net.wooga.gradle:asdf:1.1.0'
 
     integrationTestImplementation'com.wooga.spock.extensions:spock-macos-keychain-extension:[1,2['
     testImplementation 'com.wooga.gradle:gradle-commons-test:[1,2['
