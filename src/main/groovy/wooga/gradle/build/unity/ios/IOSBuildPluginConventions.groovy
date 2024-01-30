@@ -118,4 +118,8 @@ class IOSBuildPluginConventions {
             "IOS_BUILD_PROVISIONING_PROFILE_APP_ID",
             ["iosBuild.provisioningProfileAppId", "provisioningProfileAppId"],
             null)
+    static final PropertyLookup asdfVersion = new PropertyLookup("IOS_BUILD_ASDF_VERSION",
+            ["iosBuild.asdf.version"],
+        "0.13.1")
 }
+

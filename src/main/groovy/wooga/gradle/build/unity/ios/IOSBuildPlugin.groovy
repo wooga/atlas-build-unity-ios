@@ -23,12 +23,17 @@ import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
 import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.publish.plugins.PublishingPlugin
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskProvider
+import wooga.gradle.asdf.AsdfPlugin
+import wooga.gradle.asdf.AsdfPluginExtension
+import wooga.gradle.asdf.ruby.RubyPlugin
+import wooga.gradle.asdf.ruby.RubyPluginExtension
 import wooga.gradle.build.unity.ios.internal.DefaultIOSBuildPluginExtension
 import wooga.gradle.build.unity.ios.tasks.ImportCodeSigningIdentities
 import wooga.gradle.build.unity.ios.tasks.InstallProvisionProfiles
@@ -56,6 +61,8 @@ class IOSBuildPlugin implements Plugin<Project> {
         project.pluginManager.apply(XcodeBuildPlugin.class)
         project.pluginManager.apply(FastlanePlugin.class)
         project.pluginManager.apply(PublishingPlugin.class)
+
+        applyAsdfPlugin(project)
 
         def extension = project.getExtensions().create(IOSBuildPluginExtension, EXTENSION_NAME, DefaultIOSBuildPluginExtension.class)
         def fastlaneExtension = project.getExtensions().getByType(FastlanePluginExtension)
@@ -235,7 +242,7 @@ class IOSBuildPlugin implements Plugin<Project> {
                 task.logFile.convention(project.layout.buildDirectory.file("logs/${task.name}.log"))
                 task.logToStdout.convention(project.provider {project.logger.isInfoEnabled()})
                 task.outputDirectory.convention(project.layout.dir(project.provider {
-                    new File("${System.getProperty("user.home")}/Library/MobileDevice/Provisioning\\ Profiles/")
+                    new File("${System.getProperty("user.home")}/Library/MobileDevice/Provisioning Profiles/")
                 }))
             }
         })
@@ -367,6 +374,10 @@ class IOSBuildPlugin implements Plugin<Project> {
         lockKeychain.configure({ it.mustRunAfter([xcodeArchive, xcodeExport]) })
 
         def collectOutputs = tasks.register("collectOutputs", Sync) {
+            // This is needed due to a bug on gradle 7 that sometimes does not recognize the default build strategy. Exclude is the default one.
+            // It happens when the same file is inserted in the copy command multiple times.
+            // See: https://github.com/gradle/gradle/issues/17236
+            it.duplicatesStrategy = DuplicatesStrategy.EXCLUDE
             it.from(xcodeExport, archiveDSYM)
             into(project.file("${project.buildDir}/outputs"))
         }
@@ -382,5 +393,31 @@ class IOSBuildPlugin implements Plugin<Project> {
 
         archiveDSYM.configure({ it.mustRunAfter(xcodeExport) })
         tasks.named(BasePlugin.ASSEMBLE_TASK_NAME).configure({ it.dependsOn(xcodeExport, archiveDSYM, collectOutputs) })
+    }
+
+    /***
+     * Applies the asdf plugin, which manages the installation and usage of the asdf tool which manages
+     * multiple language runtime versions on a per-project basis.
+     * (https://github.com/asdf-vm/asdf)
+     * @param project
+     */
+    void applyAsdfPlugin(Project project) {
+
+        project.pluginManager.apply(AsdfPlugin.class)
+        project.pluginManager.apply(RubyPlugin.class)
+
+        def asdf = project.extensions.getByType(AsdfPluginExtension)
+        asdf.version.convention(IOSBuildPluginConventions.asdfVersion.getStringValueProvider(project))
+        asdf.tool("ruby")
+
+        def ruby = project.extensions.getByType(RubyPluginExtension)
+        ruby.gem("cocoapods", "~> 1.14.3")
+        ruby.gem("cocoapods-art")
+        ruby.gem("cocoapods-pod-linkage")
+
+        project.tasks.withType(PodInstallTask).configureEach {
+            it.dependsOn(RubyPlugin.RUBY_BIN_STUBS_TASK)
+            it.executableDirectory.set(ruby.stubsDir)
+        }
     }
 }
