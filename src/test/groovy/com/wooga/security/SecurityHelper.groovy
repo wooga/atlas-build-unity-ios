@@ -154,7 +154,7 @@ class SecurityHelper {
              '-keyout', caKey.path,
              '-passout', "pass:${passphrase}",
              '-out', caReq.path,
-             '-config', cnf.path
+             '-config', cnf.path,
         ].execute().waitFor() == 0) {
             if (['openssl', 'ca', '-create_serial',
                  '-out', caCert, '-batch',
@@ -164,7 +164,7 @@ class SecurityHelper {
                  'v3_ca',
                  '-passin', "pass:${passphrase}",
                  '-config', cnf.path,
-                 '-infiles', caReq.path
+                 '-infiles', caReq.path,
             ].execute().waitFor() == 0) {
                 return new CA(caKey, caCert, cnf, "123456")
             }
@@ -250,7 +250,7 @@ class SecurityHelper {
                     '-inkey', key.path,
                     '-out', p12.path,
                     '-name', options['privateKeyName'],
-                    '-passout', "pass:${password}"
+                    '-passout', "pass:${password}", '-legacy'
         ]
         if (args.execute().waitFor() == 0) {
             return p12
