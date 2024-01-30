@@ -776,6 +776,15 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
         def command  = "$podsExec.absolutePath"
         assertProcess(command, "repo-art")
 
+        and: "'pod' version should be 1.14 or higher, and lesser than 2.x"
+        def versionStr = "${podsExec.absolutePath} --version".execute().with {
+            def (stdout, stderr) = [new StringBuilder(), new StringBuilder()]
+            it.waitForProcessOutput(stdout, stderr)
+            return stdout.toString()
+        }
+        def version = versionStr.split("\\.")
+        version[0].toInteger() == 1 && version[1].toInteger() >= 14
+
         where:
         stubs = ["pod"]
         stubsDir = "bin"
