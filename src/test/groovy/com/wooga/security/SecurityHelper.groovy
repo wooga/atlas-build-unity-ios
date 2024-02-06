@@ -250,36 +250,46 @@ class SecurityHelper {
                     '-inkey', key.path,
                     '-out', p12.path,
                     '-name', options['privateKeyName'],
-                    '-passout', "pass:${password}", '-legacy'
+                    '-passout', "pass:${password}"
         ]
-        if (args.execute().waitFor() == 0) {
+        def sout = new StringBuilder(), serr = new StringBuilder()
+        def proc = args.execute()
+        proc.consumeProcessOutput(sout, serr)
+        if (proc.waitFor() == 0) {
             return p12
+        } else {
+            println(sout)
+            println("====stderr====")
+            println(serr)
         }
-        null
+        return null
     }
 
     static TestCertificate createTestCodeSigningCertificatePkcs12(Map options = [:], String password) {
         def ca = newCA(options)
         if (!ca) {
-            return null
+            throw new IllegalStateException("unable to generate CA certificate")
         }
         def key = createPrivateKey()
 
         if (!key) {
-            return null
+            throw new IllegalStateException("unable to generate private key")
         }
 
         def csr = createCodeSigningCertificateRequest(options, key)
 
         if (!csr) {
-            return null
+            throw new IllegalStateException("unable to create CSR file")
         }
 
         def cert = signCSR(csr, ca)
         if (!cert) {
-            return null
+            throw new IllegalStateException("unable to sign CSR file")
         }
         def p12 = createTestCertificatePkcs12(options, key, cert, password)
+        if(!p12) {
+            throw new IllegalStateException("unable to create Pkcs12 certificate")
+        }
 
         new TestCertificate(p12, cert, csr, key)
     }
