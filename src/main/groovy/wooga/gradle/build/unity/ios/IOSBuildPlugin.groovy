@@ -409,12 +409,12 @@ class IOSBuildPlugin implements Plugin<Project> {
 
         def asdf = project.extensions.getByType(AsdfPluginExtension)
         asdf.version.convention(IOSBuildPluginConventions.asdfVersion.getStringValueProvider(project))
-        asdf.tool("ruby")
 
         def ruby = project.extensions.getByType(RubyPluginExtension)
-        ruby.gem(new ToolVersionInfo("cocoapods", iosBuild.cocoapods.version))
-        ruby.gem("cocoapods-art")
-        ruby.gem("cocoapods-pod-linkage")
+        ruby.tool(new ToolVersionInfo("cocoapods", iosBuild.cocoapods.version)) {
+            it.gem("cocoapods-art", [])
+            it.gem("cocoapods-pod-linkage", [])
+        }
 
         project.tasks.withType(PodInstallTask).configureEach {
             it.dependsOn(RubyPlugin.RUBY_BIN_STUBS_TASK)
