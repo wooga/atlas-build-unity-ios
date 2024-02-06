@@ -250,18 +250,30 @@ class SecurityHelper {
                     '-inkey', key.path,
                     '-out', p12.path,
                     '-name', options['privateKeyName'],
-                    '-passout', "pass:${password}"
+                    '-passout', "pass:${password}", '-legacy'
         ]
         def sout = new StringBuilder(), serr = new StringBuilder()
+
+        //run with -legacy
         def proc = args.execute()
         proc.consumeProcessOutput(sout, serr)
         if (proc.waitFor() == 0) {
+            // if success, great, we have our result
             return p12
-        } else {
-            println(sout)
-            println("====stderr====")
-            println(serr)
         }
+
+        //if -legacy fails, run without -legacy
+        args = args.remove('-legacy')
+        proc = args.execute()
+        proc.consumeProcessOutput(sout, serr)
+        if(proc.waitFor() == 0) {
+            //success without -legacy, we have our result
+            return p12
+        }
+        //on error, print process output to help with debug
+        println(sout)
+        println("====stderr====")
+        println(serr)
         return null
     }
 
