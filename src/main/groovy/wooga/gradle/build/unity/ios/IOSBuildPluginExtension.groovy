@@ -31,6 +31,7 @@ import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Optional
 import org.gradle.util.ConfigureUtil
 import wooga.gradle.xcodebuild.config.ExportOptions
 
@@ -383,15 +384,30 @@ trait IOSBuildPluginExtension extends BaseSpec {
         it.dir(xcodeProjectFileName)
     })
 
-    protected static class CocoaPods implements ExecSpec {}
+    protected static class CocoaPods implements ExecSpec {
+        private final Property<String> version = objects.property(String)
 
-    ExecSpec cocoapods = objects.newInstance(CocoaPods)
+        Property<String> getVersion() {
+            return version
+        }
+
+        void setVersion(String version) {
+            this.version.set(version)
+        }
+
+        void setVersion(Provider<String> version) {
+            this.version.set(version)
+        }
+    }
+
+    CocoaPods cocoapods = objects.newInstance(CocoaPods)
 
     void cocoapods(Action<ExecSpec> action) {
         action.execute(cocoapods)
     }
 
-    void cocoapods(@ClosureParams(value = FromString.class, options = ["com.wooga.gradle.io.ExecSpec"])Closure configure) {
+    void cocoapods(@ClosureParams(value = FromString.class,
+            options = ["wooga.gradle.build.unity.ios.IOSBuildPluginExtension.CocoaPods"]) Closure configure) {
         cocoapods(configureUsing(configure))
     }
 }

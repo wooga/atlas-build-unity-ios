@@ -32,6 +32,7 @@ import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskProvider
 import wooga.gradle.asdf.AsdfPlugin
 import wooga.gradle.asdf.AsdfPluginExtension
+import wooga.gradle.asdf.internal.ToolVersionInfo
 import wooga.gradle.asdf.ruby.RubyPlugin
 import wooga.gradle.asdf.ruby.RubyPluginExtension
 import wooga.gradle.build.unity.ios.internal.DefaultIOSBuildPluginExtension
@@ -61,10 +62,10 @@ class IOSBuildPlugin implements Plugin<Project> {
         project.pluginManager.apply(XcodeBuildPlugin.class)
         project.pluginManager.apply(FastlanePlugin.class)
         project.pluginManager.apply(PublishingPlugin.class)
-
-        applyAsdfPlugin(project)
-
         def extension = project.getExtensions().create(IOSBuildPluginExtension, EXTENSION_NAME, DefaultIOSBuildPluginExtension.class)
+
+        installAsdfRubyPackages(project, extension)
+
         def fastlaneExtension = project.getExtensions().getByType(FastlanePluginExtension)
 
         extension.exportOptionsPlist.convention(IOSBuildPluginConventions.exportOptionsPlist.getFileValueProvider(project)
@@ -109,6 +110,7 @@ class IOSBuildPlugin implements Plugin<Project> {
         extension.cocoapods.executableDirectory.convention(IOSBuildPluginConventions.cocoaPodsExecutableDirectory.getStringValueProvider(project).map({
             project.layout.projectDirectory.dir(it)
         }))
+        extension.cocoapods.version.convention(IOSBuildPluginConventions.cocoaPodsVersion.getStringValueProvider(project))
 
         extension.provisioningName.convention(IOSBuildPluginConventions.provisioningName.getStringValueProvider(project))
         extension.configuration.convention(IOSBuildPluginConventions.configuration.getStringValueProvider(project))
@@ -395,13 +397,12 @@ class IOSBuildPlugin implements Plugin<Project> {
         tasks.named(BasePlugin.ASSEMBLE_TASK_NAME).configure({ it.dependsOn(xcodeExport, archiveDSYM, collectOutputs) })
     }
 
-    /***
-     * Applies the asdf plugin, which manages the installation and usage of the asdf tool which manages
-     * multiple language runtime versions on a per-project basis.
-     * (https://github.com/asdf-vm/asdf)
+    /**
+     * Applies the asdf plugin (https://github.com/asdf-vm/asdf),
+     * and installs the cocoapods/cocoapods-art/cocoapods-pod-linkage ruby gems.
      * @param project
      */
-    void applyAsdfPlugin(Project project) {
+    static void installAsdfRubyPackages(Project project, IOSBuildPluginExtension iosBuild) {
 
         project.pluginManager.apply(AsdfPlugin.class)
         project.pluginManager.apply(RubyPlugin.class)
@@ -411,7 +412,7 @@ class IOSBuildPlugin implements Plugin<Project> {
         asdf.tool("ruby")
 
         def ruby = project.extensions.getByType(RubyPluginExtension)
-        ruby.gem("cocoapods", "~> 1.14.3")
+        ruby.gem(new ToolVersionInfo("cocoapods", iosBuild.cocoapods.version))
         ruby.gem("cocoapods-art")
         ruby.gem("cocoapods-pod-linkage")
 

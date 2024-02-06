@@ -580,6 +580,16 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
         "cocoapods.executableDirectory"     | setter                             | osPath("/path/to/project8")                                                                | "Provider<Directory>"           | PropertyLocation.script
         "cocoapods.executableDirectory"     | _                                  | null                                                                                       | _                               | PropertyLocation.none
 
+        "cocoapods.version"                 | _                                  | "1.1.1"                                                                                    | _                               | PropertyLocation.environment
+        "cocoapods.version"                 | _                                  | "1.1.2"                                                                                    | _                               | PropertyLocation.property
+        "cocoapods.version"                 | assignment                         | "1.1.3"                                                                                    | "String"                        | PropertyLocation.script
+        "cocoapods.version"                 | assignment                         | "1.1.4"                                                                                    | "Provider<String>"              | PropertyLocation.script
+        "cocoapods.version"                 | providerSet                        | "1.1.5"                                                                                    | "String"                        | PropertyLocation.script
+        "cocoapods.version"                 | providerSet                        | "1.1.6"                                                                                    | "Provider<String>"              | PropertyLocation.script
+        "cocoapods.version"                 | setter                             | "1.1.7"                                                                                    | "String"                        | PropertyLocation.script
+        "cocoapods.version"                 | setter                             | "1.1.8"                                                                                    | "Provider<String>"              | PropertyLocation.script
+        "cocoapods.version"                 | _                                  | "~> 1.14.3"                                                                                 | _                               | PropertyLocation.none
+
         "projectPath"                       | _                                  | projectFile("Unity-iPhone.xcodeproj")                                                      | "File"                          | PropertyLocation.none
         "xcodeProjectFileName"              | _                                  | "Unity-iPhone.xcodeproj"                                                                   | "String"                        | PropertyLocation.none
         "xcodeWorkspaceFileName"            | _                                  | "Unity-iPhone.xcworkspace"                                                                 | "String"                        | PropertyLocation.none
@@ -587,10 +597,10 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
 
 
         set = new PropertySetterWriter(extensionName, property)
-            .serialize(wrapValueFallback)
-            .set(rawValue, type)
-            .to(location)
-            .use(invocation)
+                .serialize(wrapValueFallback)
+                .set(rawValue, type)
+                .to(location)
+                .use(invocation)
 
         get = new PropertyGetterTaskWriter(set)
     }
@@ -773,7 +783,7 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
 
         and: "'pod' executable should have 'repo-art' subcommand"
         def podsExec = Paths.get(projectDir.absolutePath, stubsDir, "pod").toFile()
-        def command  = "$podsExec.absolutePath"
+        def command = "$podsExec.absolutePath"
         assertProcess(command, "repo-art")
 
         and: "'pod' version should be 1.14 or higher, and lesser than 2.x"
