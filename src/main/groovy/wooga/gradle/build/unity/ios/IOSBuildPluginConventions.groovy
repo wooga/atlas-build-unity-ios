@@ -29,6 +29,10 @@ class IOSBuildPluginConventions {
             "iosBuild.cocoapods.executableDirectory",
             null)
 
+    static final PropertyLookup cocoaPodsVersion = new PropertyLookup("IOS_BUILD_COCOAPODS_VERSION",
+            ["iosBuild.cocoapods.version"],
+            "~> 1.14.3")
+
     static final PropertyLookup xcodeProjectDirectory = new PropertyLookup(
             "IOS_BUILD_XCODE_PROJECT_DIRECTORY",
             "iosBuild.xcodeProjectDirectory",
@@ -121,5 +125,6 @@ class IOSBuildPluginConventions {
     static final PropertyLookup asdfVersion = new PropertyLookup("IOS_BUILD_ASDF_VERSION",
             ["iosBuild.asdf.version"],
         "0.13.1")
+
 }
 
