@@ -250,7 +250,7 @@ class SecurityHelper {
                     '-inkey', key.path,
                     '-out', p12.path,
                     '-name', options['privateKeyName'],
-                    '-passout', "pass:${password}"
+                    '-passout', "pass:${password}", '-legacy'
         ]
         def sout = new StringBuilder(), serr = new StringBuilder()
         def proc = args.execute()
