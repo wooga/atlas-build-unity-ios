@@ -54,9 +54,9 @@ dependencies {
 
     api 'net.wooga.gradle:fastlane:[2,3['
     implementation "com.googlecode.plist:dd-plist:1.23"
-    implementation 'com.wooga.gradle:gradle-commons:[1,2['
+    implementation 'com.wooga.gradle:gradle-commons:[2,3['
     implementation 'net.wooga.gradle:asdf:[1.1.0-rc.3,2['
 
     integrationTestImplementation'com.wooga.spock.extensions:spock-macos-keychain-extension:[1,2['
-    testImplementation 'com.wooga.gradle:gradle-commons-test:[1,2['
+    testImplementation 'com.wooga.gradle:gradle-commons-test:[2,3['
 }
