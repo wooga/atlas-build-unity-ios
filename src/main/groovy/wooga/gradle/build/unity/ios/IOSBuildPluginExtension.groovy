@@ -39,6 +39,7 @@ import static org.gradle.util.ConfigureUtil.configureUsing
 
 trait IOSBuildPluginExtension extends BaseSpec {
 
+    //TODO: why is all of this deprecated? Not using fastlane anymore?
     @Deprecated
     abstract PasswordCredentials getFastlaneCredentials()
 

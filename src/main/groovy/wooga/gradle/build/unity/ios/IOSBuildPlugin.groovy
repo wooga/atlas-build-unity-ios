@@ -23,6 +23,7 @@ import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.artifacts.dsl.ArtifactHandler
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
@@ -30,21 +31,17 @@ import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.publish.plugins.PublishingPlugin
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskProvider
-import wooga.gradle.asdf.AsdfPlugin
-import wooga.gradle.asdf.AsdfPluginExtension
-import wooga.gradle.asdf.internal.ToolVersionInfo
-import wooga.gradle.asdf.ruby.RubyPlugin
-import wooga.gradle.asdf.ruby.RubyPluginExtension
 import wooga.gradle.build.unity.ios.internal.DefaultIOSBuildPluginExtension
 import wooga.gradle.build.unity.ios.tasks.ImportCodeSigningIdentities
 import wooga.gradle.build.unity.ios.tasks.InstallProvisionProfiles
-import wooga.gradle.build.unity.ios.tasks.PodInstallTask
 import wooga.gradle.fastlane.FastlanePlugin
 import wooga.gradle.fastlane.FastlanePluginExtension
 import wooga.gradle.fastlane.tasks.PilotUpload
 import wooga.gradle.fastlane.tasks.SighRenew
 import wooga.gradle.fastlane.tasks.SighRenewBatch
 import wooga.gradle.macOS.security.tasks.*
+import wooga.gradle.wooga.cocoapods.CocoapodsPlugin
+import wooga.gradle.wooga.cocoapods.CocoapodsPluginExtension
 import wooga.gradle.xcodebuild.XcodeBuildPlugin
 import wooga.gradle.xcodebuild.tasks.ArchiveDebugSymbols
 import wooga.gradle.xcodebuild.tasks.ExportArchive
@@ -55,19 +52,38 @@ class IOSBuildPlugin implements Plugin<Project> {
     private static final Logger LOG = Logging.getLogger(IOSBuildPlugin.class)
     static final String EXTENSION_NAME = "iosBuild"
     static final String PUBLISH_LIFECYCLE_TASK_NAME = "publish"
+    protected Project project
+
+
+
 
     @Override
     void apply(Project project) {
+        this.project = project
+        if (!PlatformUtils.mac) {
+            LOG.warn("This plugin is only supported on Mac OS systems.")
+            return
+        }
+
         project.pluginManager.apply(BasePlugin.class)
         project.pluginManager.apply(XcodeBuildPlugin.class)
         project.pluginManager.apply(FastlanePlugin.class)
         project.pluginManager.apply(PublishingPlugin.class)
-        def extension = project.getExtensions().create(IOSBuildPluginExtension, EXTENSION_NAME, DefaultIOSBuildPluginExtension.class)
+        project.pluginManager.apply(CocoapodsPlugin.class)
 
-        installAsdfRubyPackages(project, extension)
 
-        def fastlaneExtension = project.getExtensions().getByType(FastlanePluginExtension)
+        def extension = createExtension(EXTENSION_NAME)
 
+        configureCocoapodsPlugin(extension)
+        configureFastlaneTasks(extension)
+        configureXCodeTasks(extension)
+        configureOwnTasks(extension)
+
+        generateBuildTasks(extension)
+    }
+
+    IOSBuildPluginExtension createExtension(String extensionName) {
+        def extension = project.getExtensions().create(IOSBuildPluginExtension, extensionName, DefaultIOSBuildPluginExtension.class)
         extension.exportOptionsPlist.convention(IOSBuildPluginConventions.exportOptionsPlist.getFileValueProvider(project)
                 .orElse(project.layout.projectDirectory.file("exportOptions.plist")))
 
@@ -125,8 +141,8 @@ class IOSBuildPlugin implements Plugin<Project> {
             def appIdentifier = extension.appIdentifier.getOrElse("")
             def provisioningProfileAppId = extension.provisioningProfileAppId.getOrElse("")
             if (appIdentifier != provisioningProfileAppId) {
-                if(provisioningProfileAppId.endsWith(".*")) {
-                    String wildCardPrefix = provisioningProfileAppId.substring(0, provisioningProfileAppId.length() -2)
+                if (provisioningProfileAppId.endsWith(".*")) {
+                    String wildCardPrefix = provisioningProfileAppId.substring(0, provisioningProfileAppId.length() - 2)
                     profiles = profiles.collectEntries { appId, name ->
                         if (appId.startsWith(wildCardPrefix)) {
                             return [provisioningProfileAppId, name]
@@ -139,138 +155,114 @@ class IOSBuildPlugin implements Plugin<Project> {
             }
             profiles
         }).orElse([:]))
-
-        //register some defaults
-        project.tasks.withType(XcodeArchive.class, new Action<XcodeArchive>() {
-            @Override
-            void execute(XcodeArchive task) {
-                task.projectPath.convention(extension.projectPath)
-                task.clean(false)
-                task.scheme.set(extension.getScheme())
-                task.configuration.set(extension.getConfiguration())
-                task.teamId.set(extension.getTeamId())
-            }
-        })
-
-        project.tasks.withType(ExportArchive.class, new Action<ExportArchive>() {
-            @Override
-            void execute(ExportArchive task) {
-                task.exportOptionsPlist.convention(extension.finalExportOptionsPlist)
-            }
-        })
-
-        project.tasks.withType(SecurityCreateKeychain.class, new Action<SecurityCreateKeychain>() {
-            @Override
-            void execute(SecurityCreateKeychain task) {
-                task.baseName.convention("build")
-                task.extension.convention("keychain")
-                task.password.convention(extension.keychainPassword)
-                task.lockKeychainAfterTimeout.convention(-1)
-                task.lockKeychainWhenSleep.convention(true)
-                task.destinationDir.convention(project.layout.buildDirectory.dir("sign/keychains"))
-            }
-        })
-
-        project.tasks.withType(ImportCodeSigningIdentities.class, new Action<ImportCodeSigningIdentities>() {
-            @Override
-            void execute(ImportCodeSigningIdentities task) {
-                task.baseName.convention("build")
-                task.extension.convention("keychain")
-                task.password.convention(extension.keychainPassword)
-                task.destinationDir.convention(project.layout.buildDirectory.dir("sign/keychains"))
-            }
-        })
-
-        project.tasks.withType(SighRenew.class, new Action<SighRenew>() {
-            @Override
-            void execute(SighRenew task) {
-                task.username.set(project.provider({
-                    if (extension.fastlaneCredentials.username) {
-                        return extension.fastlaneCredentials.username
-                    }
-                    fastlaneExtension.username.getOrNull()
-                }))
-
-                task.password.set(project.provider({
-                    if (extension.fastlaneCredentials.password) {
-                        return extension.fastlaneCredentials.password
-                    }
-                    fastlaneExtension.password.getOrNull()
-                }))
-
-                task.readOnly.convention(true)
-                task.skipInstall.convention(true)
-                task.teamId.convention(extension.getTeamId())
-                task.appIdentifier.convention(extension.getAppIdentifier())
-                task.destinationDir.convention(project.layout.dir(project.provider({ task.getTemporaryDir() })))
-                task.provisioningName.convention(extension.getProvisioningName())
-                task.adhoc.convention(extension.adhoc)
-                task.fileName.convention(extension.appIdentifier.map({ "signing${it}.mobileprovision".toString() }).orElse("signing.mobileprovision"))
-            }
-        })
-
-        project.tasks.withType(PilotUpload.class, new Action<PilotUpload>() {
-            @Override
-            void execute(PilotUpload task) {
-                task.username.convention(project.provider({
-                    if (extension.fastlaneCredentials.username) {
-                        return extension.fastlaneCredentials.username
-                    }
-                    null
-                }).orElse(fastlaneExtension.username))
-
-                task.password.set(project.provider({
-                    if (extension.fastlaneCredentials.password) {
-                        return extension.fastlaneCredentials.password
-                    }
-                    null
-                }).orElse(fastlaneExtension.getPassword()))
-
-                task.devPortalTeamId.convention(extension.getTeamId())
-                task.appIdentifier.convention(extension.getAppIdentifier())
-            }
-        })
-
-        project.tasks.withType(ImportCodeSigningIdentities.class, new Action<ImportCodeSigningIdentities>() {
-            @Override
-            void execute(ImportCodeSigningIdentities task) {
-                task.applicationAccessPaths.convention(["/usr/bin/codesign"])
-            }
-        })
-
-        project.tasks.withType(InstallProvisionProfiles.class, new Action<InstallProvisionProfiles>() {
-            @Override
-            void execute(InstallProvisionProfiles task) {
-                task.logFile.convention(project.layout.buildDirectory.file("logs/${task.name}.log"))
-                task.logToStdout.convention(project.provider {project.logger.isInfoEnabled()})
-                task.outputDirectory.convention(project.layout.dir(project.provider {
-                    new File("${System.getProperty("user.home")}/Library/MobileDevice/Provisioning Profiles/")
-                }))
-            }
-        })
-
-        project.tasks.withType(PodInstallTask.class, new Action<PodInstallTask>() {
-            @Override
-            void execute(PodInstallTask task) {
-                task.executableName.convention(extension.cocoapods.executableName)
-                task.executableDirectory.convention(extension.cocoapods.executableDirectory)
-            }
-        })
-
-        if (!PlatformUtils.mac) {
-            LOG.warn("This plugin is only supported on Mac OS systems.")
-            return
-        }
-
-        generateBuildTasks(project, extension)
+        return extension
     }
 
-    void generateBuildTasks(final Project project, IOSBuildPluginExtension extension) {
+    CocoapodsPluginExtension configureCocoapodsPlugin(IOSBuildPluginExtension extension) {
+        def cocoapods = project.extensions.findByType(CocoapodsPluginExtension)
+        cocoapods.executable.convention(extension.cocoapods.executableDirectory.file(extension.cocoapods.executableName))
+        cocoapods.projectDirectory.convention(extension.xcodeProjectDirectory)
+        return cocoapods
+    }
+
+    void configureFastlaneTasks(IOSBuildPluginExtension extension) {
+        def fastlane = project.getExtensions().getByType(FastlanePluginExtension)
+        project.tasks.withType(SighRenew).configureEach { SighRenew task ->
+            task.username.set(project.provider({
+                if (extension.fastlaneCredentials.username) {
+                    return extension.fastlaneCredentials.username
+                }
+                fastlane.username.getOrNull()
+            }))
+
+            task.password.set(project.provider({
+                if (extension.fastlaneCredentials.password) {
+                    return extension.fastlaneCredentials.password
+                }
+                fastlane.password.getOrNull()
+            }))
+
+            task.readOnly.convention(true)
+            task.skipInstall.convention(true)
+            task.teamId.convention(extension.getTeamId())
+            task.appIdentifier.convention(extension.getAppIdentifier())
+            task.destinationDir.convention(project.layout.dir(project.provider({ task.getTemporaryDir() })))
+            task.provisioningName.convention(extension.getProvisioningName())
+            task.adhoc.convention(extension.adhoc)
+            task.fileName.convention(extension.appIdentifier.map({ "signing${it}.mobileprovision".toString() }).orElse("signing.mobileprovision"))
+        }
+
+        project.tasks.withType(PilotUpload).configureEach { PilotUpload task ->
+            task.username.convention(project.provider({
+                if (extension.fastlaneCredentials.username) {
+                    return extension.fastlaneCredentials.username
+                }
+                null
+            }).orElse(fastlane.username))
+
+            task.password.set(project.provider({
+                if (extension.fastlaneCredentials.password) {
+                    return extension.fastlaneCredentials.password
+                }
+                null
+            }).orElse(fastlane.getPassword()))
+
+            task.devPortalTeamId.convention(extension.getTeamId())
+            task.appIdentifier.convention(extension.getAppIdentifier())
+        }
+    }
+
+    void configureXCodeTasks(IOSBuildPluginExtension extension) {
+        project.tasks.withType(XcodeArchive).configureEach { XcodeArchive task ->
+            task.projectPath.convention(extension.projectPath)
+            task.clean.convention(false)
+            task.scheme.set(extension.getScheme())
+            task.configuration.set(extension.getConfiguration())
+            task.teamId.set(extension.getTeamId())
+        }
+
+        project.tasks.withType(ExportArchive).configureEach { ExportArchive task ->
+            task.exportOptionsPlist.convention(extension.finalExportOptionsPlist)
+        }
+    }
+
+    def configureOwnTasks(IOSBuildPluginExtension extension) {
+        project.tasks.withType(SecurityCreateKeychain).configureEach { SecurityCreateKeychain task ->
+            task.baseName.convention("build")
+            task.extension.convention("keychain")
+            task.password.convention(extension.keychainPassword)
+            task.lockKeychainAfterTimeout.convention(-1)
+            task.lockKeychainWhenSleep.convention(true)
+            task.destinationDir.convention(project.layout.buildDirectory.dir("sign/keychains"))
+        }
+
+        project.tasks.withType(ImportCodeSigningIdentities).configureEach { ImportCodeSigningIdentities task ->
+            task.baseName.convention("build")
+            task.extension.convention("keychain")
+            task.password.convention(extension.keychainPassword)
+            task.destinationDir.convention(project.layout.buildDirectory.dir("sign/keychains"))
+        }
+
+
+        project.tasks.withType(ImportCodeSigningIdentities).configureEach { ImportCodeSigningIdentities task ->
+            task.applicationAccessPaths.convention(["/usr/bin/codesign"])
+        }
+
+        project.tasks.withType(InstallProvisionProfiles).configureEach { InstallProvisionProfiles task ->
+            task.logFile.convention(project.layout.buildDirectory.file("logs/${task.name}.log"))
+            task.logToStdout.convention(project.provider { project.logger.isInfoEnabled() })
+            task.outputDirectory.convention(project.layout.dir(project.provider {
+                new File("${System.getProperty("user.home")}/Library/MobileDevice/Provisioning Profiles/")
+            }))
+        }
+    }
+
+    void generateBuildTasks(IOSBuildPluginExtension extension) {
         def tasks = project.tasks
 
         def createKeychain = tasks.register("createKeychain", SecurityCreateKeychain)
 
-        TaskProvider<ImportCodeSigningIdentities> buildKeychain = tasks.register("importCodeSigningIdentities", ImportCodeSigningIdentities) {
+        def buildKeychain = tasks.register("importCodeSigningIdentities", ImportCodeSigningIdentities) {
             it.inputKeychain.set(createKeychain.flatMap({ it.keychain }))
             it.signingIdentities.convention(extension.signingIdentities)
             it.passphrase.convention(extension.codeSigningIdentityFilePassphrase)
@@ -308,7 +300,7 @@ class IOSBuildPlugin implements Plugin<Project> {
 
         buildKeychain.configure({ it.finalizedBy(removeKeychain, lockKeychain) })
 
-        def shutdownHook = new Thread({
+        def keychainCleanup = new Thread({
             System.err.println("shutdown hook called")
             System.err.flush()
             if (addKeychain.get().didWork) {
@@ -320,18 +312,17 @@ class IOSBuildPlugin implements Plugin<Project> {
             }
             System.err.flush()
         })
-
         addKeychain.configure({ Task t ->
             t.doLast {
                 t.logger.info("Add shutdown hook")
-                Runtime.getRuntime().addShutdownHook(shutdownHook)
+                Runtime.getRuntime().addShutdownHook(keychainCleanup)
             }
         })
 
         removeKeychain.configure({ Task t ->
             t.doLast {
                 t.logger.info("Remove shutdown hook")
-                Runtime.getRuntime().removeShutdownHook(shutdownHook)
+                Runtime.getRuntime().removeShutdownHook(keychainCleanup)
             }
         })
 
@@ -345,12 +336,7 @@ class IOSBuildPlugin implements Plugin<Project> {
             it.provisioningProfiles.from(importProvisioningProfiles.get().getOutputs())
         }
 
-        TaskProvider<PodInstallTask> podInstall = tasks.register("podInstall", PodInstallTask) {
-            it.projectDirectory.set(extension.xcodeProjectDirectory)
-            it.xcodeWorkspaceFileName.set(extension.xcodeWorkspaceFileName)
-            it.xcodeProjectFileName.set(extension.xcodeProjectFileName)
-        }
-
+        def podInstall = tasks.named("podInstall") //from cocoapods plugin
         def xcodeArchive = tasks.register("xcodeArchive", XcodeArchive) {
             it.dependsOn addKeychain, unlockKeychain, installProvisioningProfiles, podInstall, buildKeychain
             it.projectPath.set(extension.projectPath)
@@ -358,7 +344,9 @@ class IOSBuildPlugin implements Plugin<Project> {
         }
 
         def xcodeExport = tasks.named(xcodeArchive.name + XcodeBuildPlugin.EXPORT_ARCHIVE_TASK_POSTFIX, ExportArchive)
-        def archiveDSYM = tasks.named(xcodeArchive.name + XcodeBuildPlugin.ARCHIVE_DEBUG_SYMBOLS_TASK_POSTFIX, ArchiveDebugSymbols)
+        def archiveDSYM = tasks.named(xcodeArchive.name + XcodeBuildPlugin.ARCHIVE_DEBUG_SYMBOLS_TASK_POSTFIX, ArchiveDebugSymbols) {
+            mustRunAfter(xcodeExport)
+        }
 
         def publishTestFlight = tasks.register("publishTestFlight", PilotUpload) {
             it.ipa.set(xcodeExport.flatMap({ it.outputPath }))
@@ -384,41 +372,19 @@ class IOSBuildPlugin implements Plugin<Project> {
             into(project.file("${project.buildDir}/outputs"))
         }
 
-        project.artifacts {
-            archives(xcodeExport.flatMap({ it.outputPath })) {
+        tasks.named(BasePlugin.ASSEMBLE_TASK_NAME) {
+            it.dependsOn(xcodeExport, archiveDSYM, collectOutputs)
+        }
+
+        project.artifacts { ArtifactHandler it ->
+            archives(xcodeExport.flatMap { it.outputPath }) {
                 it.type = "iOS application archive"
             }
-            archives(archiveDSYM.flatMap({ it.archiveFile })) {
+            archives(archiveDSYM.flatMap { it.archiveFile }) {
                 it.type = "iOS application symbols"
             }
         }
-
-        archiveDSYM.configure({ it.mustRunAfter(xcodeExport) })
-        tasks.named(BasePlugin.ASSEMBLE_TASK_NAME).configure({ it.dependsOn(xcodeExport, archiveDSYM, collectOutputs) })
     }
 
-    /**
-     * Applies the asdf plugin (https://github.com/asdf-vm/asdf),
-     * and installs the cocoapods/cocoapods-art/cocoapods-pod-linkage ruby gems.
-     * @param project
-     */
-    static void installAsdfRubyPackages(Project project, IOSBuildPluginExtension iosBuild) {
 
-        project.pluginManager.apply(AsdfPlugin.class)
-        project.pluginManager.apply(RubyPlugin.class)
-
-        def asdf = project.extensions.getByType(AsdfPluginExtension)
-        asdf.version.convention(IOSBuildPluginConventions.asdfVersion.getStringValueProvider(project))
-
-        def ruby = project.extensions.getByType(RubyPluginExtension)
-        ruby.tool(new ToolVersionInfo("cocoapods", iosBuild.cocoapods.version)) {
-            it.gem("cocoapods-art", [])
-            it.gem("cocoapods-pod-linkage", [])
-        }
-
-        project.tasks.withType(PodInstallTask).configureEach {
-            it.dependsOn(RubyPlugin.RUBY_BIN_STUBS_TASK)
-            it.executableDirectory.set(ruby.stubsDir)
-        }
-    }
 }
