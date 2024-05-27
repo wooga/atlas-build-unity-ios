@@ -3,7 +3,6 @@ package wooga.gradle.wooga.cocoapods
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFile
-import org.gradle.api.plugins.AppliedPlugin
 import org.gradle.api.provider.Provider
 import wooga.gradle.asdf.AsdfPlugin
 import wooga.gradle.asdf.AsdfPluginExtension
@@ -11,7 +10,6 @@ import wooga.gradle.asdf.internal.ToolVersionInfo
 import wooga.gradle.asdf.ruby.GemfileSpec
 import wooga.gradle.asdf.ruby.RubyPlugin
 import wooga.gradle.asdf.ruby.RubyPluginExtension
-import wooga.gradle.build.unity.ios.IOSBuildPluginExtension
 import wooga.gradle.wooga.cocoapods.tasks.AddArtRepositories
 import wooga.gradle.wooga.cocoapods.tasks.PodInstall
 import wooga.gradle.wooga.cocoapods.tasks.PodTask
@@ -47,20 +45,10 @@ class CocoapodsPlugin implements Plugin<Project> {
             artRepositories.convention(cocoapods.artRepositories)
         }
 
-        def podInstall = project.tasks.register("podInstall", PodInstall) {
+        project.tasks.register("podInstall", PodInstall) {
             dependsOn(addArtRepos, updateArtRepos)
         }
-
         //TODO: turn build-unity-ios into unified-build-system-ios
-        //TODO: this plugin should be subordinate to build-unity-ios. Reverse interface changes there and make it configure this guy. 
-        //Overrides for when net.wooga.build-unity-ios is applied
-        project.pluginManager.withPlugin("net.wooga.build-unity-ios") { AppliedPlugin _ ->
-            def buildIos = project.extensions.findByType(IOSBuildPluginExtension)
-            cocoapods.projectDirectory.convention(buildIos.xcodeProjectDirectory)
-            project.tasks.named("xcodeArchive") {
-                dependsOn podInstall
-            }
-        }
     }
 
     def createWoogaCocoapodsExtension(String extensionName) {
@@ -76,10 +64,11 @@ class CocoapodsPlugin implements Plugin<Project> {
     }
 
     Provider<RegularFile> defaultCocoapodsInstallation(CocoapodsInstallSpec installSpec) {
-        def maybeExecutable = CocoapodsPluginConventions.executable.getFileValueProvider(project)
-        //present makes sense here because Conventions are static inputs (env vars/properties/constants).
-        if(maybeExecutable.present) {
-            return maybeExecutable
+        def executableConvention = CocoapodsPluginConventions.executable.getFileValueProvider(project)
+
+        //.present makes sense here because Conventions are static inputs (env vars/properties/constants).
+        if(executableConvention.present && executableConvention.get().asFile.file) {
+            return executableConvention
         } else {
             //We want to apply asdf/ruby plugin only if we actually need them
             return installAsdfRubyCocoapods(installSpec)

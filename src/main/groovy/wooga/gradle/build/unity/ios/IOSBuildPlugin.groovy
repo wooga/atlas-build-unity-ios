@@ -122,12 +122,6 @@ class IOSBuildPlugin implements Plugin<Project> {
             project.layout.projectDirectory.dir(it)
         }).orElse(extension.xcodeProjectDirectory.dir(extension.xcodeWorkspaceFileName)))
 
-        extension.cocoapods.executableName.convention(IOSBuildPluginConventions.cocoaPodsExecutableName.getStringValueProvider(project))
-        extension.cocoapods.executableDirectory.convention(IOSBuildPluginConventions.cocoaPodsExecutableDirectory.getStringValueProvider(project).map({
-            project.layout.projectDirectory.dir(it)
-        }))
-        extension.cocoapods.version.convention(IOSBuildPluginConventions.cocoaPodsVersion.getStringValueProvider(project))
-
         extension.provisioningName.convention(IOSBuildPluginConventions.provisioningName.getStringValueProvider(project))
         extension.configuration.convention(IOSBuildPluginConventions.configuration.getStringValueProvider(project))
 
@@ -160,7 +154,6 @@ class IOSBuildPlugin implements Plugin<Project> {
 
     CocoapodsPluginExtension configureCocoapodsPlugin(IOSBuildPluginExtension extension) {
         def cocoapods = project.extensions.findByType(CocoapodsPluginExtension)
-        cocoapods.executable.convention(extension.cocoapods.executableDirectory.file(extension.cocoapods.executableName))
         cocoapods.projectDirectory.convention(extension.xcodeProjectDirectory)
         return cocoapods
     }

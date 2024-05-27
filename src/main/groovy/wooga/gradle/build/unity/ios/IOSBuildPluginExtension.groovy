@@ -384,31 +384,4 @@ trait IOSBuildPluginExtension extends BaseSpec {
         }
         it.dir(xcodeProjectFileName)
     })
-
-    protected static class CocoaPods implements ExecSpec {
-        private final Property<String> version = objects.property(String)
-
-        Property<String> getVersion() {
-            return version
-        }
-
-        void setVersion(String version) {
-            this.version.set(version)
-        }
-
-        void setVersion(Provider<String> version) {
-            this.version.set(version)
-        }
-    }
-
-    CocoaPods cocoapods = objects.newInstance(CocoaPods)
-
-    void cocoapods(Action<ExecSpec> action) {
-        action.execute(cocoapods)
-    }
-
-    void cocoapods(@ClosureParams(value = FromString.class,
-            options = ["wooga.gradle.build.unity.ios.IOSBuildPluginExtension.CocoaPods"]) Closure configure) {
-        cocoapods(configureUsing(configure))
-    }
 }

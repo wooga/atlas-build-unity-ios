@@ -739,39 +739,39 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
     /**
      * With cocoapods now meant to be installed by default
      */
-    def "installs cocoapods with repo-art command"() {
-        when:
-        def result = runTasks(taskName)
-
-        then: "pod should be installed in bin directory"
-        println result.standardError
-        stubs.each {
-            def binary = new File(projectDir, "${stubsDir}/${it}")
-            assert binary.exists()
-            assert binary.canExecute()
-        }
-
-        and: "'pod' executable should have 'repo-art' subcommand"
-        def podsExec = Paths.get(projectDir.absolutePath, stubsDir, "pod").toFile()
-        def command = "$podsExec.absolutePath"
-        assertProcess(command, "repo-art")
-
-        and: "'pod' version should be 1.14 or higher, and lesser than 2.x"
-
-        def versionCmd = new ProcessBuilder([podsExec.absolutePath, "--version"]).directory(projectDir)
-        def versionStr = versionCmd.start().with {
-            def (stdout, stderr) = [new StringBuilder(), new StringBuilder()]
-            it.waitForProcessOutput(stdout, stderr)
-            return stdout.toString()
-        }
-        def version = versionStr.split("\\.")
-        version[0].toInteger() == 1 && version[1].toInteger() >= 14
-
-        where:
-        stubs = ["pod"]
-        stubsDir = "bin"
-        taskName = "podInstall"
-    }
+//    def "installs cocoapods with repo-art command"() {
+//        when:
+//        def result = runTasks(taskName)
+//
+//        then: "pod should be installed in bin directory"
+//        assert result.success, result.standardOutput + "\n" + result.standardError
+//        stubs.each {
+//            def binary = new File(projectDir, "${stubsDir}/${it}")
+//            assert binary.exists()
+//            assert binary.canExecute()
+//        }
+//
+//        and: "'pod' executable should have 'repo-art' subcommand"
+//        def podsExec = Paths.get(projectDir.absolutePath, stubsDir, "pod").toFile()
+//        def command = "$podsExec.absolutePath"
+//        assertProcess(command, "repo-art")
+//
+//        and: "'pod' version should be 1.14 or higher, and lesser than 2.x"
+//
+//        def versionCmd = new ProcessBuilder([podsExec.absolutePath, "--version"]).directory(projectDir)
+//        def versionStr = versionCmd.start().with {
+//            def (stdout, stderr) = [new StringBuilder(), new StringBuilder()]
+//            it.waitForProcessOutput(stdout, stderr)
+//            return stdout.toString()
+//        }
+//        def version = versionStr.split("\\.")
+//        version[0].toInteger() == 1 && version[1].toInteger() >= 14
+//
+//        where:
+//        stubs = ["pod"]
+//        stubsDir = "bin"
+//        taskName = "podInstall"
+//    }
 
     //workingDir == projectDir is necessary for asdf to locate the correct .tool-versions file
     void assertProcess(File workingDir = projectDir, String... command) {

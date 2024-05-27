@@ -19,19 +19,19 @@ package wooga.gradle.build.unity.ios
 import com.wooga.gradle.PropertyLookup
 
 class IOSBuildPluginConventions {
-    static final PropertyLookup cocoaPodsExecutableName = new PropertyLookup(
-            "IOS_BUILD_COCOAPODS_EXECUTABLE_NAME",
-            "iosBuild.cocoapods.executableName",
-            "pod")
-
-    static final PropertyLookup cocoaPodsExecutableDirectory = new PropertyLookup(
-            "IOS_BUILD_COCOAPODS_EXECUTABLE_DIRECTORY",
-            "iosBuild.cocoapods.executableDirectory",
-            null)
-
-    static final PropertyLookup cocoaPodsVersion = new PropertyLookup("IOS_BUILD_COCOAPODS_VERSION",
-            ["iosBuild.cocoapods.version"],
-            "~> 1.14.3")
+//    static final PropertyLookup cocoaPodsExecutableName = new PropertyLookup(
+//            "IOS_BUILD_COCOAPODS_EXECUTABLE_NAME",
+//            "iosBuild.cocoapods.executableName",
+//            "pod")
+//
+//    static final PropertyLookup cocoaPodsExecutableDirectory = new PropertyLookup(
+//            "IOS_BUILD_COCOAPODS_EXECUTABLE_DIRECTORY",
+//            "iosBuild.cocoapods.executableDirectory",
+//            null)
+//
+//    static final PropertyLookup cocoaPodsVersion = new PropertyLookup("IOS_BUILD_COCOAPODS_VERSION",
+//            ["iosBuild.cocoapods.version"],
+//            "~> 1.14.3")
 
     static final PropertyLookup xcodeProjectDirectory = new PropertyLookup(
             "IOS_BUILD_XCODE_PROJECT_DIRECTORY",

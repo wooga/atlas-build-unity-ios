@@ -20,6 +20,14 @@ package wooga.gradle.build.unity.ios
 import nebula.test.PluginProjectSpec
 
 class IOSBuildPluginActivationSpec extends PluginProjectSpec {
+    def setup() {
+        //PluginProjectSpec doesn't create folders for the subprojects it tests, which leads to issues when
+        // trying to access provider values _______somehow_______
+        def subprojects = ['sub', 'sub1', 'sub2', 'sub3']
+        subprojects.forEach { String subProj ->
+            new File(projectDir, subProj).mkdirs()
+        }
+    }
     @Override
     String getPluginName() {
         return 'net.wooga.build-unity-ios'
