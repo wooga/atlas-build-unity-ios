@@ -24,7 +24,7 @@ class CocoapodsPluginIntegrationSpec extends IntegrationSpec {
         def cocoapodsHome = new File(projectDir, podsHomeDir)
         buildFile << """
             woogaCocoapods {
-                homeDir = ${wrapValue(cocoapodsHome, File)}
+                homeDirectory = ${wrapValue(cocoapodsHome, File)}
                 artRepositories = ${wrapValue(expectedRepositories, List)}
             }
         """

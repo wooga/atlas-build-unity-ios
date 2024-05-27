@@ -51,7 +51,8 @@ class CocoapodsPlugin implements Plugin<Project> {
             dependsOn(addArtRepos, updateArtRepos)
         }
 
-
+        //TODO: turn build-unity-ios into unified-build-system-ios
+        //TODO: this plugin should be subordinate to build-unity-ios. Reverse interface changes there and make it configure this guy. 
         //Overrides for when net.wooga.build-unity-ios is applied
         project.pluginManager.withPlugin("net.wooga.build-unity-ios") { AppliedPlugin _ ->
             def buildIos = project.extensions.findByType(IOSBuildPluginExtension)
@@ -92,7 +93,7 @@ class CocoapodsPlugin implements Plugin<Project> {
         def ruby = project.extensions.getByType(RubyPluginExtension)
         ruby.tool(new ToolVersionInfo("cocoapods", cocoapods.version)) { GemfileSpec it ->
             it.gems.putAll(cocoapods.gemExtensions.map {it.collectEntries { pair ->
-                [pair.key, pair.value.toArray()]
+                [pair.key, pair.value.toArray() as String[]]
             }})
         }
         def cocoapodsTool = asdf.getTool("cocoapods")

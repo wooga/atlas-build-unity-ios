@@ -37,6 +37,12 @@ gradlePlugin {
             description = 'ios build plugin for unity exported Xcode projects'
             implementationClass = 'wooga.gradle.build.unity.ios.IOSBuildPlugin'
         }
+        coocoapods {
+            id = 'net.wooga.unified-build-system-cocoapods'
+            displayName = 'Wooga Gradle plugin'
+            description = 'ios build plugin for unity exported Xcode projects'
+            implementationClass = 'wooga.gradle.wooga.cocoapods.CocoapodsPlugin'
+        }
     }
 }
 
