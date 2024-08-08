@@ -110,7 +110,7 @@ class IOSBuildPluginIntegrationSpec extends IOSBuildIntegrationSpec {
     }
 
     def cleanup() {
-        keychainLookupList.reset()
+        keychainLookupList?.reset()
     }
 
     @Requires({ os.macOs && env['ATLAS_BUILD_UNITY_IOS_EXECUTE_KEYCHAIN_SPEC'] == 'YES' })
