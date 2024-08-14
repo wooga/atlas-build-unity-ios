@@ -54,7 +54,7 @@ dependencies {
     api 'net.wooga.gradle:xcodebuild:[2,3['
 
     api 'net.wooga.gradle:fastlane:[2,3['
-    implementation "com.googlecode.plist:dd-plist:1.23"
+    implementation "com.googlecode.plist:dd-plist:1.28"
     implementation 'com.wooga.gradle:gradle-commons:[1,2['
     implementation 'net.wooga.gradle:asdf:[2,3['
 
